@@ -1,10 +1,10 @@
-from pdfserver.fetcher import basic_auth_url_fetcher
 from aiohttp import web
+from pdfserver.fetcher import basic_auth_url_fetcher
 from weasyprint import HTML, CSS
+from weasyprint.text.fonts import FontConfiguration
 import io
 import json
 import logging
-
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -55,8 +55,9 @@ async def convert_to_pdf(request):
         css.append(CSS(filename=css_file, url_fetcher=basic_auth_url_fetcher))
 
     temp_file = io.BytesIO()
+    font_config = FontConfiguration()
     try:
-        html.write_pdf(temp_file, stylesheets=css)
+        html.write_pdf(temp_file, stylesheets=css, font_config=font_config)
     except Exception as e:
         logger.error(f"Error generating PDF: {e}")
         return web.json_response(

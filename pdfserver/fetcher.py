@@ -5,9 +5,10 @@ from weasyprint.urls import StreamingGzipFile
 from weasyprint.urls import UNICODE_SCHEME_RE
 from urllib3.util import make_headers
 import zlib
+import os
 
 
-def basic_auth_url_fetcher(url, timeout=10, ssl_context=None, auth=None):
+def basic_auth_url_fetcher(url, timeout=180, ssl_context=None, auth=None):
     """This is a copy of weasyprint's default fetcher, but adds
     basic auth header and removes file:// support.
     Expect auth being a username, password tuple
@@ -18,8 +19,10 @@ def basic_auth_url_fetcher(url, timeout=10, ssl_context=None, auth=None):
             url = url.split('?')[0]
 
         headers = deepcopy(HTTP_HEADERS)
-        if auth:
-            headers.update(make_headers(basic_auth=f'{auth[0]}:{auth[1]}'))
+        username = os.environ.get('REMOTE_USERNAME', None)
+        password = os.environ.get('REMOTE_PASSWORD', None)
+        if username and password:
+            headers.update(make_headers(basic_auth=f'{username}:{password}'))
 
         response = urlopen(
             Request(url, headers=headers), timeout=timeout,
