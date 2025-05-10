@@ -1,3 +1,4 @@
+from pdfserver.fetcher import basic_auth_url_fetcher
 from aiohttp import web
 from weasyprint import HTML, CSS
 import io
@@ -49,9 +50,9 @@ async def convert_to_pdf(request):
     css = []
     filename = data.get('filename', 'output.pdf')
 
-    html = HTML(url)
+    html = HTML(url, url_fetcher=basic_auth_url_fetcher)
     for css_file in css_files:
-        css.append(CSS(filename=css_file))
+        css.append(CSS(filename=css_file, url_fetcher=basic_auth_url_fetcher))
 
     temp_file = io.BytesIO()
     try:

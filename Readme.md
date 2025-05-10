@@ -6,10 +6,18 @@ There are no security features, so do not use it on the open internet.
 
 
 
-Install
-=======
+Install for development
+========================
 
 ```
 python -m venv .
-./bin/pip install -r requirements.txt
+./bin/pip install -e . -c constraints.tx
+```
+
+
+Run
+===
+
+```
+./bin/python pdfserver/server.py
 ```
