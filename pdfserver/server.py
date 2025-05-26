@@ -2,6 +2,7 @@ from aiohttp import web
 from pdfserver.fetcher import basic_auth_url_fetcher
 from weasyprint import HTML, CSS
 from weasyprint.text.fonts import FontConfiguration
+from weasyprint.urls import URLFetchingError
 import io
 import json
 import logging
@@ -50,7 +51,14 @@ async def convert_to_pdf(request):
     css = []
     filename = data.get('filename', 'output.pdf')
 
-    html = HTML(url, url_fetcher=basic_auth_url_fetcher)
+    try:
+        html = HTML(url, url_fetcher=basic_auth_url_fetcher)
+    except URLFetchingError:
+        logger.error(f"Failed to fetch URL: {url}")
+        return web.json_response(
+            {"error": "Failed to fetch URL"},
+            status=500
+        )
     for css_file in css_files:
         css.append(CSS(filename=css_file, url_fetcher=basic_auth_url_fetcher))
 

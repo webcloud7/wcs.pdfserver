@@ -11,7 +11,7 @@ Install for development
 
 ```
 python -m venv .
-./bin/pip install -e . -c constraints.tx
+./bin/pip install -e . -c constraints.txt
 ```
 
 
@@ -20,4 +20,14 @@ Run
 
 ```
 ./bin/python pdfserver/server.py
+```
+
+
+
+Tests
+=====
+
+```
+./bin/pip install -e ".[test]" -c constraints.txt
+./bin/pytest
 ```

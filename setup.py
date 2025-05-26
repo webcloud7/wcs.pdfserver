@@ -13,4 +13,12 @@ setup(name='wcs.pdfserver',
             'weasyprint',
             'urllib3',
       ],
+      extras_require={
+            'test': [
+                  'pytest',
+                  'pytest_httpserver',
+                  'pytest-aiohttp',
+                  'responses',
+            ],
+      },
       zip_safe=False)

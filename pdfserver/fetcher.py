@@ -8,7 +8,7 @@ import zlib
 import os
 
 
-def basic_auth_url_fetcher(url, timeout=180, ssl_context=None, auth=None):
+def basic_auth_url_fetcher(url, timeout=120, ssl_context=None, auth=None):
     """This is a copy of weasyprint's default fetcher, but adds
     basic auth header and removes file:// support.
     Expect auth being a username, password tuple
@@ -24,9 +24,7 @@ def basic_auth_url_fetcher(url, timeout=180, ssl_context=None, auth=None):
         if username and password:
             headers.update(make_headers(basic_auth=f'{username}:{password}'))
 
-        response = urlopen(
-            Request(url, headers=headers), timeout=timeout,
-            context=ssl_context)
+        response = urlopen(Request(url, headers=headers), timeout=timeout, context=ssl_context)
         response_info = response.info()
         result = {
             'redirected_url': response.geturl(),
