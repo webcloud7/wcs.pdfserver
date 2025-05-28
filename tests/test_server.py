@@ -1,4 +1,6 @@
-
+from pdfserver.server import TaskStatus
+import time
+import asyncio
 
 TEST_HTML_RESPONSE = """
 <!DOCTYPE html>
@@ -34,14 +36,29 @@ async def test_convert_to_pdf_success(client, httpserver):
 
     # Check the response
     assert resp.status == 200
-    assert resp.content_type == 'application/pdf'
+    assert resp.content_type == 'application/json'
 
-    # Read the PDF content
-    pdf_content = await resp.read()
+    data = await resp.json()
+    assert data['status'] == TaskStatus.RUNNING.value
+    uid = data['uid']
+
+    max_wait = 1  # seconds
+    for _ in range(max_wait * 20):
+        status_response = await client.get(f'/status/{uid}')
+        assert status_response.status == 200
+        status_data = await status_response.json()
+        if status_data['status'] == TaskStatus.COMPLETED.value:
+            break
+        await asyncio.sleep(0.5)
+
+    donlad_url = status_data['download']
+
+    resp_pdf = await client.get(donlad_url)
+    pdf_content = await resp_pdf.read()
 
     # Basic validation that it's a PDF
     assert pdf_content.startswith(b'%PDF-')
-    assert resp.headers['Content-Disposition'] == 'attachment; filename="test.pdf"'
+    assert resp_pdf.headers['Content-Disposition'] == 'attachment; filename="test.pdf"'
 
 
 async def test_convert_to_pdf_missing_url(client):
@@ -86,9 +103,20 @@ async def test_convert_to_pdf_generation_error(client, httpserver):
         }
     )
 
-    assert resp.status == 500
+    assert resp.status == 200
     data = await resp.json()
-    assert data['error'] == 'Failed to fetch URL'
+    assert data['status'] == TaskStatus.RUNNING.value
+    uid = data['uid']
+
+    max_wait = 1
+    for _ in range(max_wait * 20):
+        status_response = await client.get(f'/status/{uid}')
+        status_data = await status_response.json()
+        if status_data['status'] == TaskStatus.FAILED.value:
+            break
+        await asyncio.sleep(0.5)
+
+    assert status_data['message'] == 'Failed to fetch URL'
 
 
 async def test_index_endpoint(client):

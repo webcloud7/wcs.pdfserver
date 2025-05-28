@@ -40,7 +40,6 @@ async def create_pdf(url, css, filename, uid):
     def _create_pdf_sync():
         temp_file = io.BytesIO()
         font_config = FontConfiguration()
-        
         try:
             html = HTML(url, url_fetcher=basic_auth_url_fetcher)
             html.write_pdf(temp_file, stylesheets=css, font_config=font_config)
@@ -108,7 +107,7 @@ async def convert_to_pdf(request):
 
     asyncio.create_task(create_pdf(url, css, filename, uid))
     response = web.json_response(
-        {"pdf_id": uid, "filename": cache['name'], "status": cache['status']},
+        {"uid": uid, "filename": cache['name'], "status": cache['status']},
         status=200
     )
     return response
@@ -133,7 +132,7 @@ async def get_pdf_status(request):
     }
 
     if pdf['status'] == TaskStatus.COMPLETED.value:
-        response_data['donwload'] = f'/pdf/{pdf_id}'
+        response_data['download'] = f'/pdf/{pdf_id}'
     return web.json_response(response_data)
 
 
