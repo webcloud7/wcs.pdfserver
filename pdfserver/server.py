@@ -90,7 +90,7 @@ async def convert_to_pdf(request):
 
     asyncio.create_task(create_pdf(data['url'], data['css'], data['filename'], uid))
     response = web.json_response(
-        {"uid": uid, "filename": cache['name'], "status": cache['status']},
+        {"uid": uid, "filename": cache['filename'], "status": cache['status']},
         status=200
     )
     return response
@@ -145,7 +145,7 @@ async def get_pdf_status(request):
     response_data = {
         "uid": pdf_id,
         "status": pdf['status'],
-        "filename": pdf['name'],
+        "filename": pdf['filename'],
         'timestamp': pdf['timestamp'],
         'message': pdf['message']
     }
@@ -159,7 +159,7 @@ async def get_pdf_status(request):
 async def get_pdf(request):
     pdf_id = request.match_info['pdf_id']
     pdf = pdf_cache.get_pdf(pdf_id)
-    return pdf_response(pdf['data'], pdf['name'])
+    return pdf_response(pdf['data'], pdf['filename'])
 
 
 @routes.get('/')

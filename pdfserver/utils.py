@@ -4,7 +4,7 @@ from weasyprint import CSS
 import json
 
 
-def pdf_response(file, name):
+def pdf_response(file, filename):
     """Utility function to create a PDF response."""
     file.seek(0)
     return web.Response(
@@ -12,7 +12,7 @@ def pdf_response(file, name):
             content_type='application/pdf',
             headers={
                 'Content-Length': str(len(file.getvalue())),
-                'Content-Disposition': f'attachment; filename="{name}"',
+                'Content-Disposition': f'attachment; filename="{filename}"',
             }
         )
 

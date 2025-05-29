@@ -65,7 +65,7 @@ class ExpiringPDFCache:
         uid = uuid4().hex
         self.cache[uid] = {
             'data': None,
-            'name': pdf_name,
+            'filename': pdf_name,
             'timestamp': time.time(),
             'status': status,
             'message': '',
