@@ -177,6 +177,8 @@ make build v1.0.0 IMAGE_NAME=your-registry/your-image TAG=custom-tag
 
 Make sure to log in to your Docker registry before running the `make build` command, so that the images can be pushed successfully.
 
+The build command also creates a git tag.
+
 ## License
 
 This project is licensed under the MIT License.
