@@ -155,6 +155,28 @@ docker run -p 8040:8040 pdfserver
 
 This will start the container and map port 8040 from the container to port 8040 on the host machine. You can then access the pdfserver at `http://localhost:8040`.
 
+### Building and Pushing Multi-Architecture Images
+
+The `Makefile` includes a `build` target that uses `docker buildx` to build and push multi-architecture images (amd64 and arm64) to a Docker registry.
+
+To build and push the images, run:
+
+```bash
+make build TAG=v1.0.0
+```
+
+Replace `v1.0.0` with the desired tag for the release.
+
+This command will build the images for amd64 and arm64 architectures, tag them with `latest` and the provided release tag, and push them to the configured Docker registry.
+
+You can customize the image name and default tag by setting the `IMAGE_NAME` and `TAG` variables in the `Makefile` or by passing them as arguments:
+
+```bash
+make build v1.0.0 IMAGE_NAME=your-registry/your-image TAG=custom-tag
+```
+
+Make sure to log in to your Docker registry before running the `make build` command, so that the images can be pushed successfully.
+
 ## License
 
 This project is licensed under the MIT License.
