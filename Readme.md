@@ -35,6 +35,13 @@ Start the server with:
 
 By default, the server will listen on `0.0.0.0:8040`.
 
+### Environment Variables
+
+The following optional environment variables can be set:
+
+- `REMOTE_USERNAME`: Username for basic authentication when fetching remote URLs
+- `REMOTE_PASSWORD`: Password for basic authentication when fetching remote URLs
+
 ## API
 
 ### POST /convert
