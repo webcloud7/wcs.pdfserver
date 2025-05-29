@@ -9,6 +9,7 @@ from pdfserver.utils import TaskStatus
 from weasyprint import HTML
 from weasyprint.text.fonts import FontConfiguration
 from weasyprint.urls import URLFetchingError
+import markdown
 import asyncio
 import io
 
@@ -159,7 +160,40 @@ async def get_pdf(request):
 async def index(request):
     with open('Readme.md', 'r') as f:
         readme_content = f.read()
-    return web.Response(text=readme_content, content_type='text/plain')
+    markdown_html = markdown.markdown(readme_content)
+    html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeasyPrint PDF Conversion Service</title>
+    <link rel="icon" href="static/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css">
+    <style>
+        .markdown-body {{
+            box-sizing: border-box;
+            min-width: 200px;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 45px;
+        }}
+
+        @media (max-width: 767px) {{
+            .markdown-body {{
+                padding: 15px;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <article class="markdown-body">
+        {markdown_html}
+    </article>
+</body>
+</html>
+"""
+    return web.Response(text=html_content, content_type='text/html')
 
 
 @routes.get('/health')
@@ -169,6 +203,7 @@ async def health_check(request):
 
 async def init():
     app = web.Application()
+    app.router.add_static('/static/', path='pdfserver/static', name='static')
     app.add_routes(routes)
 
     await pdf_cache.start_cleanup_task()

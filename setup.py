@@ -19,6 +19,7 @@ setup(name='wcs.pdfserver',
                   'pytest_httpserver',
                   'pytest-aiohttp',
                   'responses',
+                  'markdown',
             ],
       },
       zip_safe=False)
