@@ -157,7 +157,9 @@ async def get_pdf(request):
 
 @routes.get('/')
 async def index(request):
-    return web.Response(text="WeasyPrint PDF Conversion Service", content_type='text/plain')
+    with open('Readme.md', 'r') as f:
+        readme_content = f.read()
+    return web.Response(text=readme_content, content_type='text/plain')
 
 
 @routes.get('/health')

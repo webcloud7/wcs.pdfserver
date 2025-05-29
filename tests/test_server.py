@@ -182,7 +182,7 @@ async def test_index_endpoint(client):
     """Test the index endpoint."""
     resp = await client.get('/')
     assert resp.status == 200
-    assert await resp.text() == "WeasyPrint PDF Conversion Service"
+    assert (await resp.text()).startswith('# WeasyPrint PDF Conversion Service')
     assert resp.content_type == 'text/plain'
 
 
