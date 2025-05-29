@@ -12,6 +12,7 @@ setup(name='wcs.pdfserver',
             'aiohttp',
             'weasyprint',
             'urllib3',
+            'markdown',
       ],
       extras_require={
             'test': [
@@ -19,7 +20,6 @@ setup(name='wcs.pdfserver',
                   'pytest_httpserver',
                   'pytest-aiohttp',
                   'responses',
-                  'markdown',
             ],
       },
       zip_safe=False)
