@@ -131,6 +131,30 @@ Run tests:
 ./bin/pytest
 ```
 
+## Docker
+
+You can also run the pdfserver as a Docker container.
+
+### Building the Docker Image
+
+To build the Docker image, run the following command in the root directory of the project:
+
+```bash
+docker build --no-cache -t pdfserver .
+```
+
+This will build the Docker image with the tag `pdfserver`.
+
+### Running the Docker Container
+
+To run the pdfserver as a Docker container, use the following command:
+
+```bash
+docker run -p 8040:8040 pdfserver
+```
+
+This will start the container and map port 8040 from the container to port 8040 on the host machine. You can then access the pdfserver at `http://localhost:8040`.
+
 ## License
 
 This project is licensed under the MIT License.
