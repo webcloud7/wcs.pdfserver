@@ -1,15 +1,16 @@
 from aiohttp import web
+from concurrent.futures import ThreadPoolExecutor
+from enum import Enum
 from pdfserver.cache import ExpiringPDFCache
 from pdfserver.fetcher import basic_auth_url_fetcher
 from pdfserver.log import logger
-from weasyprint import HTML, CSS
+from pdfserver.utils import pdf_response
+from pdfserver.utils import extrat_data_from_request
+from weasyprint import HTML
 from weasyprint.text.fonts import FontConfiguration
 from weasyprint.urls import URLFetchingError
-from concurrent.futures import ThreadPoolExecutor
-from enum import Enum
 import asyncio
 import io
-import json
 
 
 class TaskStatus(Enum):
@@ -23,6 +24,21 @@ pdf_cache = ExpiringPDFCache(expiry_minutes=30)
 pdf_executor = ThreadPoolExecutor(max_workers=10)
 
 
+def _create_pdf_sync(url, css):
+    temp_file = io.BytesIO()
+    font_config = FontConfiguration()
+    try:
+        html = HTML(url, url_fetcher=basic_auth_url_fetcher)
+        html.write_pdf(temp_file, stylesheets=css, font_config=font_config)
+        return temp_file
+    except URLFetchingError:
+        logger.error(f"Failed to fetch URL: {url}")
+        raise
+    except Exception as e:
+        logger.error(f"Error generating PDF: {e}")
+        raise
+
+
 async def create_pdf(url, css, filename, uid):
     """
     Helper function to create a PDF from a URL with optional CSS files.
@@ -33,28 +49,11 @@ async def create_pdf(url, css, filename, uid):
     :param uid: Unique identifier for the PDF.
     :return: BytesIO object containing the PDF data.
     """
-    # temp_file = io.BytesIO()
-    # font_config = FontConfiguration()
     cache = pdf_cache.cache[uid]
-
-    def _create_pdf_sync():
-        temp_file = io.BytesIO()
-        font_config = FontConfiguration()
-        try:
-            html = HTML(url, url_fetcher=basic_auth_url_fetcher)
-            html.write_pdf(temp_file, stylesheets=css, font_config=font_config)
-            return temp_file
-        except URLFetchingError:
-            logger.error(f"Failed to fetch URL: {url}")
-            raise
-        except Exception as e:
-            logger.error(f"Error generating PDF: {e}")
-            raise
-
     try:
         # Run the blocking PDF generation in a thread pool
         loop = asyncio.get_event_loop()
-        temp_file = await loop.run_in_executor(pdf_executor, _create_pdf_sync)
+        temp_file = await loop.run_in_executor(pdf_executor, _create_pdf_sync, url, css)
         pdf_cache.store_pdf(uid, temp_file, TaskStatus.COMPLETED.value)
     except URLFetchingError:
         cache['status'] = TaskStatus.FAILED.value
@@ -73,44 +72,64 @@ async def convert_to_pdf(request):
     {
         "url": "http://localhost/path/to/endpoint",
         "css_files": ["http://localhost/path/to/file.css", ...]
-        "filename": 'a_file.pdf'
+        "filename": 'a_file.pdf',
     }
 
     Returns:
     - JSON response with PDF ID and status "running".
     """
+    data = await extrat_data_from_request(request)
 
-    try:
-        # Parse request body
-        data = await request.json()
-    except json.JSONDecodeError:
+    if data['error']:
         return web.json_response(
-            {"error": "Invalid JSON in request body"},
+            {"error": data['error']},
             status=400
         )
 
-    if 'url' not in data:
-        return web.json_response(
-            {"error": "URL is required"},
-            status=400
-        )
+    uid, cache = pdf_cache.init_store(data['filename'], TaskStatus.RUNNING.value)
 
-    url = data['url']
-    css_files = data.get('css', [])
-    css = []
-    filename = data.get('filename', 'output.pdf')
-
-    for css_file in css_files:
-        css.append(CSS(filename=css_file, url_fetcher=basic_auth_url_fetcher))
-
-    uid, cache = pdf_cache.init_store(filename, TaskStatus.RUNNING.value)
-
-    asyncio.create_task(create_pdf(url, css, filename, uid))
+    asyncio.create_task(create_pdf(data['url'], data['css'], data['filename'], uid))
     response = web.json_response(
         {"uid": uid, "filename": cache['name'], "status": cache['status']},
         status=200
     )
     return response
+
+
+@routes.post('/convert_sync')
+async def convert_to_pdf_sync(request):
+    """
+    Synchronous endpoint to convert HTML from a URL to PDF.
+
+    Expected JSON payload:
+    {
+        "url": "http://localhost/path/to/endpoint",
+        "css_files": ["http://localhost/path/to/file.css", ...],
+        "filename": 'a_file.pdf',
+    }
+    Returns:
+    - A PDF file as a response.
+    """
+    data = await extrat_data_from_request(request)
+
+    if data['error']:
+        return web.json_response(
+            {"error": data['error']},
+            status=400
+        )
+    try:
+        temp_file = _create_pdf_sync(data['url'], data['css'])
+    except URLFetchingError:
+        return web.json_response(
+            {"error": "Failed to fetch URL"},
+            status=400
+        )
+    except Exception:
+        return web.json_response(
+            {"error": "Error generating PDF"},
+            status=400
+        )
+    return pdf_response(temp_file, data['name'])
 
 
 @routes.get('/status/{pdf_id}')
@@ -140,18 +159,7 @@ async def get_pdf_status(request):
 async def get_pdf(request):
     pdf_id = request.match_info['pdf_id']
     pdf = pdf_cache.get_pdf(pdf_id)
-
-    file = pdf['data']
-    file.seek(0)
-    response = web.Response(
-        body=file.getvalue(),
-        content_type='application/pdf',
-        headers={
-            'Content-Length': str(len(file.getvalue())),
-            'Content-Disposition': f'attachment; filename="{pdf['name']}"',
-        }
-    )
-    return response
+    return pdf_response(pdf['data'], pdf['name'])
 
 
 @routes.get('/')
