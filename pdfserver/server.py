@@ -129,7 +129,7 @@ async def convert_to_pdf_sync(request):
             {"error": "Error generating PDF"},
             status=400
         )
-    return pdf_response(temp_file, data['name'])
+    return pdf_response(temp_file, data['filename'])
 
 
 @routes.get('/status/{pdf_id}')
