@@ -1,7 +1,14 @@
 from aiohttp import web
+from enum import Enum
 from pdfserver.fetcher import basic_auth_url_fetcher
 from weasyprint import CSS
 import json
+
+
+class TaskStatus(Enum):
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 def pdf_response(file, filename):

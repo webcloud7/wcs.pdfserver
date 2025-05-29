@@ -1,22 +1,16 @@
 from aiohttp import web
 from concurrent.futures import ThreadPoolExecutor
-from enum import Enum
 from pdfserver.cache import ExpiringPDFCache
 from pdfserver.fetcher import basic_auth_url_fetcher
 from pdfserver.log import logger
-from pdfserver.utils import pdf_response
 from pdfserver.utils import extrat_data_from_request
+from pdfserver.utils import pdf_response
+from pdfserver.utils import TaskStatus
 from weasyprint import HTML
 from weasyprint.text.fonts import FontConfiguration
 from weasyprint.urls import URLFetchingError
 import asyncio
 import io
-
-
-class TaskStatus(Enum):
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
 
 
 routes = web.RouteTableDef()
@@ -49,12 +43,12 @@ async def create_pdf(url, css, filename, uid):
     :param uid: Unique identifier for the PDF.
     :return: BytesIO object containing the PDF data.
     """
-    cache = pdf_cache.cache[uid]
+    cache = pdf_cache.storage[uid]
     try:
         # Run the blocking PDF generation in a thread pool
         loop = asyncio.get_event_loop()
         temp_file = await loop.run_in_executor(pdf_executor, _create_pdf_sync, url, css)
-        pdf_cache.store_pdf(uid, temp_file, TaskStatus.COMPLETED.value)
+        pdf_cache.save_pdf(uid, filename, temp_file)
     except URLFetchingError:
         cache['status'] = TaskStatus.FAILED.value
         cache['message'] = 'Failed to fetch URL'
@@ -86,11 +80,10 @@ async def convert_to_pdf(request):
             status=400
         )
 
-    uid, cache = pdf_cache.init_store(data['filename'], TaskStatus.RUNNING.value)
-
+    uid, cache = pdf_cache.add()
     asyncio.create_task(create_pdf(data['url'], data['css'], data['filename'], uid))
     response = web.json_response(
-        {"uid": uid, "filename": cache['filename'], "status": cache['status']},
+        {"uid": uid, "filename": data['filename'], "status": cache['status']},
         status=200
     )
     return response
