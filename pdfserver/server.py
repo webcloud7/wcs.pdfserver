@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pdfserver.cache import ExpiringPDFCache
 from pdfserver.fetcher import basic_auth_url_fetcher
 from pdfserver.log import logger
+from pdfserver.utils import extract_html_data_from_request
 from pdfserver.utils import extrat_data_from_request
 from pdfserver.utils import pdf_response
 from pdfserver.utils import TaskStatus
@@ -118,6 +119,70 @@ async def convert_to_pdf_sync(request):
             {"error": "Failed to fetch URL"},
             status=400
         )
+    except Exception:
+        return web.json_response(
+            {"error": "Error generating PDF"},
+            status=400
+        )
+    return pdf_response(temp_file, data['filename'])
+
+
+def _create_pdf_from_html_sync(html_content, css):
+    temp_file = io.BytesIO()
+    font_config = FontConfiguration()
+    try:
+        html = HTML(string=html_content)
+        html.write_pdf(temp_file, stylesheets=css, font_config=font_config)
+        return temp_file
+    except Exception as e:
+        logger.error(f"Error generating PDF: {e}")
+        raise
+
+
+async def create_pdf_from_html(html_content, css, filename, uid):
+    cache = pdf_cache.storage[uid]
+    try:
+        loop = asyncio.get_event_loop()
+        temp_file = await loop.run_in_executor(
+            pdf_executor, _create_pdf_from_html_sync, html_content, css
+        )
+        pdf_cache.save_pdf(uid, filename, temp_file)
+    except Exception:
+        cache['status'] = TaskStatus.FAILED.value
+        cache['message'] = 'Error generating PDF'
+
+
+@routes.post('/convert-html')
+async def convert_html_to_pdf(request):
+    data = await extract_html_data_from_request(request)
+
+    if data['error']:
+        return web.json_response(
+            {"error": data['error']},
+            status=400
+        )
+
+    uid, cache = pdf_cache.add()
+    asyncio.create_task(
+        create_pdf_from_html(data['html'], data['css'], data['filename'], uid)
+    )
+    return web.json_response(
+        {"uid": uid, "filename": data['filename'], "status": cache['status']},
+        status=200
+    )
+
+
+@routes.post('/convert-html_sync')
+async def convert_html_to_pdf_sync(request):
+    data = await extract_html_data_from_request(request)
+
+    if data['error']:
+        return web.json_response(
+            {"error": data['error']},
+            status=400
+        )
+    try:
+        temp_file = _create_pdf_from_html_sync(data['html'], data['css'])
     except Exception:
         return web.json_response(
             {"error": "Error generating PDF"},

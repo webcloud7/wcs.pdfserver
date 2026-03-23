@@ -192,3 +192,130 @@ async def test_health_check(client):
     assert resp.status == 200
     assert await resp.text() == "OK"
     assert resp.content_type == 'text/plain'
+
+
+async def test_convert_html_to_pdf_success(client):
+    resp = await client.post(
+        '/convert-html',
+        json={
+            'html': TEST_HTML_RESPONSE,
+            'filename': 'test.pdf'
+        }
+    )
+
+    assert resp.status == 200
+    data = await resp.json()
+    assert data['status'] == TaskStatus.RUNNING.value
+    uid = data['uid']
+
+    max_wait = 1
+    for _ in range(max_wait * 20):
+        status_response = await client.get(f'/status/{uid}')
+        assert status_response.status == 200
+        status_data = await status_response.json()
+        if status_data['status'] == TaskStatus.COMPLETED.value:
+            break
+        await asyncio.sleep(0.5)
+
+    download_url = status_data['download']
+    resp_pdf = await client.get(download_url)
+    pdf_content = await resp_pdf.read()
+
+    assert pdf_content.startswith(b'%PDF-')
+    assert resp_pdf.headers['Content-Disposition'] == 'attachment; filename="test.pdf"'
+
+
+async def test_convert_html_to_pdf_with_css(client):
+    resp = await client.post(
+        '/convert-html',
+        json={
+            'html': TEST_HTML_RESPONSE,
+            'css': 'h1 { color: red; }',
+            'filename': 'styled.pdf'
+        }
+    )
+
+    assert resp.status == 200
+    data = await resp.json()
+    assert data['status'] == TaskStatus.RUNNING.value
+    uid = data['uid']
+
+    max_wait = 1
+    for _ in range(max_wait * 20):
+        status_response = await client.get(f'/status/{uid}')
+        status_data = await status_response.json()
+        if status_data['status'] == TaskStatus.COMPLETED.value:
+            break
+        await asyncio.sleep(0.5)
+
+    download_url = status_data['download']
+    resp_pdf = await client.get(download_url)
+    pdf_content = await resp_pdf.read()
+
+    assert pdf_content.startswith(b'%PDF-')
+
+
+async def test_sync_convert_html_to_pdf_success(client):
+    resp = await client.post(
+        '/convert-html_sync',
+        json={
+            'html': TEST_HTML_RESPONSE,
+            'filename': 'test.pdf'
+        }
+    )
+    pdf_content = await resp.read()
+    assert pdf_content.startswith(b'%PDF-')
+    assert resp.headers['Content-Disposition'] == 'attachment; filename="test.pdf"'
+
+
+async def test_sync_convert_html_to_pdf_with_css(client):
+    resp = await client.post(
+        '/convert-html_sync',
+        json={
+            'html': TEST_HTML_RESPONSE,
+            'css': 'h1 { color: blue; }',
+            'filename': 'styled.pdf'
+        }
+    )
+    pdf_content = await resp.read()
+    assert pdf_content.startswith(b'%PDF-')
+
+
+async def test_convert_html_to_pdf_missing_html(client):
+    resp = await client.post(
+        '/convert-html',
+        json={'filename': 'test.pdf'}
+    )
+    assert resp.status == 400
+    data = await resp.json()
+    assert data['error'] == 'HTML content is required'
+
+
+async def test_sync_convert_html_to_pdf_missing_html(client):
+    resp = await client.post(
+        '/convert-html_sync',
+        json={'filename': 'test.pdf'}
+    )
+    assert resp.status == 400
+    data = await resp.json()
+    assert data['error'] == 'HTML content is required'
+
+
+async def test_convert_html_to_pdf_invalid_json(client):
+    resp = await client.post(
+        '/convert-html',
+        data='invalid json'
+    )
+    assert resp.status == 400
+    data = await resp.json()
+    assert data['error'] == 'Invalid JSON in request body'
+
+
+async def test_sync_convert_html_to_pdf_invalid_json(client):
+    resp = await client.post(
+        '/convert-html_sync',
+        data='invalid json'
+    )
+    assert resp.status == 400
+    data = await resp.json()
+    assert data['error'] == 'Invalid JSON in request body'

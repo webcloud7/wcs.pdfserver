@@ -51,3 +51,31 @@ async def extrat_data_from_request(request):
         result['css'].append(CSS(filename=css_file, url_fetcher=basic_auth_url_fetcher))
 
     return result
+
+
+async def extract_html_data_from_request(request):
+
+    result = {
+        'error': None,
+        'html': None,
+        'css': [],
+        'filename': None,
+    }
+
+    data = {}
+    try:
+        data = await request.json()
+    except json.JSONDecodeError:
+        result["error"] = "Invalid JSON in request body"
+        return result
+
+    if 'html' not in data:
+        result["error"] = "HTML content is required"
+        return result
+
+    result['html'] = data['html']
+    result['filename'] = data.get('filename', 'output.pdf')
+    if data.get('css'):
+        result['css'].append(CSS(string=data['css']))
+
+    return result
