@@ -4,8 +4,8 @@ This is a simple HTTP server that uses WeasyPrint to convert HTML pages to PDF f
 
 ## Features
 
-- Convert HTML pages to PDF files
-- Apply custom CSS stylesheets
+- Convert HTML pages to PDF files (from URL or raw HTML string)
+- Apply custom CSS stylesheets (from URL or raw CSS string)
 - Asynchronous conversion with status polling
 - Synchronous conversion for immediate download
 - In-memory caching of generated PDFs with expiration
@@ -79,6 +79,42 @@ Response:
 Synchronously convert an HTML page to PDF. The generated PDF will be returned in the response.
 
 Request body: Same as `/convert`
+
+Response: The generated PDF file
+
+### POST /convert-html
+
+Asynchronously convert raw HTML content to PDF.
+
+Request body:
+```json
+{
+  "html": "<html><body><h1>Hello</h1></body></html>",
+  "css": "h1 { color: red; }",
+  "filename": "output.pdf"
+}
+```
+
+- `html` (required): The HTML content to convert
+- `css` (optional): A CSS string to apply
+- `filename` (optional): The filename to use for the generated PDF. Defaults to `output.pdf`.
+
+Response:
+```json
+{
+  "uid": "550e8400-e29b-41d4-a716-446655440000",
+  "filename": "output.pdf",
+  "status": "running"
+}
+```
+
+Use `/status/{uid}` to poll for completion and `/pdf/{uid}` to download the result.
+
+### POST /convert-html_sync
+
+Synchronously convert raw HTML content to PDF. The generated PDF will be returned in the response.
+
+Request body: Same as `/convert-html`
 
 Response: The generated PDF file
 
